@@ -377,3 +377,31 @@ def view_bpc_tic():
     )
     fig = plot_bpc_tic()
     show_fig(fig, f"BPC-TIC-{st.session_state.view_selected_file}")
+
+def view_identifications(df, level="psm"):
+    """
+    Display identifications in a DataFrame.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing identifications.
+        level (str): Level of identifications (psm or peptide).
+
+    Returns:
+        None
+    """
+    # Group by filename and count number of rows
+    counts = df.groupby("filename").size().reset_index(name="count")
+    
+    # Plot number of identifications per file
+    fig = px.bar(counts, x="filename", y="count", title=f"Number of {level}s per file")
+    return fig
+
+def view_quantification(df, level="psm", value="log2_ms2_intensity"):
+    """"
+    Display boxplot of quantification values per file
+    """
+    
+    # plot boxplot
+    fig = px.box(df, x="filename", y=value, title=f"Quantification values per {level}")
+    
+    return fig
