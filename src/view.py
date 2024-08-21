@@ -170,6 +170,54 @@ def get_theo_spectrum(peptide):
     
     return theo_spectrum
 
+class SpectrumAlignment:
+    def __init__(self, observed_spectrum, theo_spectrum):
+        self.observed_spectrum = observed_spectrum
+        self.theo_spectrum = theo_spectrum
+        self.alignment = self.spectrum_alignment(observed_spectrum, theo_spectrum)
+
+    @staticmethod
+    def spectrum_alignment(observed_spectrum, theo_spectrum):
+        alignment = []
+
+        spa = poms.SpectrumAlignment()
+
+        p = spa.getParameters()
+
+        # use 0.5 Da tolerance (Note: for high-resolution data we could also use ppm by setting the is_relative_tolerance value to true)
+
+        p.setValue("tolerance", 0.5)
+
+        p.setValue("is_relative_tolerance", "false")
+
+        spa.setParameters(p)
+
+        # align both spectra
+        spa.getSpectrumAlignment(alignment, theo_spectrum, observed_spectrum)
+        
+        return alignment
+    
+    def inspect(self):
+        t = []
+
+        for theo_idx, obs_idx in self.alignment:
+            ion_name = self.theo_spectrum.getStringDataArrays()[0][theo_idx].decode()
+            ion_charge = self.theo_spectrum.getIntegerDataArrays()[0][theo_idx]
+
+            t.append(
+                [
+                    ion_name,
+                    str(ion_charge),
+                    str(self.theo_spectrum[theo_idx].getMZ()),
+                    str(self.observed_spectrum[obs_idx].getMZ()),
+                ]
+            )
+
+        df = pd.DataFrame(t, columns=["ion", "charge", "theo. m/z", "observed m/z"])
+        
+        return df
+        
+
 def plot_bpc_tic() -> go.Figure:
     """Plot the base peak and total ion chromatogram (TIC).
 
