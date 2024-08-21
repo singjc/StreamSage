@@ -266,3 +266,24 @@ class CommandExecutor:
             self.run_command(["python", str(path), str(tmp_params_file)])
             # remove tmp params file
             tmp_params_file.unlink()
+            
+    def run_exec(self, tool: str, config_file: str) -> None:
+        """
+        Executes a specified executable with dynamic input and output parameters,
+        optionally logging the execution process. The method constructs a command
+        based on the provided input/output parameters and executes it via a subprocess
+        call.
+
+        This method facilitates the integration of standalone executables into a
+        larger application or workflow, allowing for the execution of these executables
+        with varying inputs and outputs without modifying the executables themselves.
+
+        Args:
+            tool (str): The name or path of the executable to be executed.
+            input_output (dict, optional): A dictionary specifying the input/output parameter names (as key) and their corresponding file paths (as value). Defaults to {}.
+        """
+        # Construct command
+        command = [tool, config_file, "--annotate-matches", "--batch-size", "5"]
+        
+        # Run command
+        self.run_command(command)

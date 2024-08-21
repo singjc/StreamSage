@@ -13,7 +13,7 @@ class Workflow(WorkflowManager):
     # For layout use any streamlit components such as tabs (as shown in example), columns, or even expanders.
     def __init__(self) -> None:
         # Initialize the parent class with the workflow name.
-        super().__init__("TOPP Workflow", st.session_state["workspace"])
+        super().__init__("Sage Workflow", st.session_state["workspace"])
 
     def upload(self) -> None:
         t = st.tabs(["MS data"])
@@ -22,7 +22,7 @@ class Workflow(WorkflowManager):
             self.ui.upload_widget(
                 key="mzML-files",
                 name="MS data",
-                file_type="mzML",
+                file_types="mzML",
                 fallback=[str(f) for f in Path("example-data", "mzML").glob("*.mzML")],
             )
 
@@ -33,23 +33,15 @@ class Workflow(WorkflowManager):
 
         # Create tabs for different analysis steps.
         t = st.tabs(
-            ["**Feature Detection**", "**Feature Linking**", "**Python Custom Tool**"]
+            ["**Sage**"]
         )
         with t[0]:
             # Parameters for FeatureFinderMetabo TOPP tool.
             self.ui.input_TOPP(
-                "FeatureFinderMetabo",
+                "SageAdapter",
                 custom_defaults={"algorithm:common:noise_threshold_int": 1000.0},
             )
-        with t[1]:
-            # Paramters for MetaboliteAdductDecharger TOPP tool.
-            self.ui.input_TOPP("FeatureLinkerUnlabeledKD")
-        with t[2]:
-            # A single checkbox widget for workflow logic.
-            self.ui.input_widget("run-python-script", False, "Run custom Python script")
-            # Generate input widgets for a custom Python tool, located at src/python-tools.
-            # Parameters are specified within the file in the DEFAULTS dictionary.
-            self.ui.input_python("example")
+
 
     @st.experimental_fragment
     def execution(self) -> None:
@@ -72,28 +64,9 @@ class Workflow(WorkflowManager):
         # Run FeatureFinderMetabo tool with input and output files.
         self.logger.log("Detecting features...")
         self.executor.run_topp(
-            "FeatureFinderMetabo", input_output={"in": in_mzML, "out": out_ffm}
+            "SageAdapter", input_output={"in": in_mzML, "out": out_ffm}
         )
 
-        # Prepare input and output files for feature linking
-        in_fl = self.file_manager.get_files(out_ffm, collect=True)
-        out_fl = self.file_manager.get_files(
-            "feature_matrix.consensusXML", set_results_dir="feature-linking"
-        )
-
-        # Run FeatureLinkerUnlabaeledKD with all feature maps passed at once
-        self.logger.log("Linking features...")
-        self.executor.run_topp(
-            "FeatureLinkerUnlabeledKD", input_output={"in": in_fl, "out": out_fl}
-        )
-        self.logger.log("Exporting consensus features to pandas DataFrame...")
-        self.executor.run_python(
-            "export_consensus_feature_df", input_output={"in": out_fl[0]}
-        )
-        # Check if adduct detection should be run.
-        if self.params["run-python-script"]:
-            # Example for a custom Python tool, which is located in src/python-tools.
-            self.executor.run_python("example", {"in": in_mzML})
 
     @st.experimental_fragment
     def results(self) -> None:

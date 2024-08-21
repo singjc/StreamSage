@@ -60,6 +60,95 @@ def get_df(file: Union[str, Path]) -> pd.DataFrame:
     else:
         st.session_state["view_ms2"] = pd.DataFrame()
 
+@st.cache_resource
+def load_ms_file(file: Union[str, Path]):                
+    od_exp = poms.OnDiscMSExperiment()
+    od_exp.openFile(file)
+    meta_data = od_exp.getMetaData()
+    return od_exp, meta_data
+
+def _add_meta_values(df: pd.DataFrame, object: any) -> pd.DataFrame:
+    """
+    Adds metavalues from given object to given DataFrame.
+    
+    Args:
+        df (pd.DataFrame): DataFrame to which metavalues will be added.
+        object (any): Object from which metavalues will be extracted.
+    
+    Returns:
+        pd.DataFrame: DataFrame with added meta values.
+    """
+    mvs = []
+    object.getKeys(mvs)
+    for k in mvs:
+        v = object.getMetaValue(k)
+        dtype = 'U100'
+        try:
+            v = int(v)
+            dtype = int
+        except ValueError:
+            try:
+                v = float(v)
+                dtype = 'double'
+            except ValueError:
+                dtype = f'U{len(v)}'
+        
+        df[k.decode()] = np.full(df.shape[0], v, dtype=np.dtype(dtype))
+
+    return df
+
+def msspectrum_get_df(spec, export_meta_values: bool = True) -> pd.DataFrame:
+        """
+        Returns a DataFrame representation of the MSSpectrum.
+
+        Args:
+            export_meta_values (bool): Whether to export meta values.
+
+        Returns:
+            pd.DataFrame: DataFrame representation of the MSSpectrum.
+        """
+        mzs, intensities = spec.get_peaks()
+
+        df = pd.DataFrame({'mz': mzs, 'intensity': intensities})
+
+        cnt = df.shape[0]
+        
+        # ion mobility
+        df['ion_mobility'] = np.array([i for i in spec.getFloatDataArrays()[0]]) if spec.containsIMData() else np.nan
+        df['ion_mobility_unit'] = np.full(cnt, spec.getDriftTimeUnitAsString(), dtype=np.dtype(f'U{len(spec.getDriftTimeUnitAsString())}'))
+
+        df['ms_level'] = np.full(cnt, spec.getMSLevel(), dtype=np.dtype('uint16'))
+
+        precs = spec.getPrecursors()
+        df['precursor_mz'] = np.full(cnt, (precs[0].getMZ() if precs else 0.0), dtype=np.dtype('double'))
+        df['precursor_charge'] = np.full(cnt, (precs[0].getCharge() if precs else 0), dtype=np.dtype('uint16'))
+        
+        df['native_id'] = np.full(cnt, spec.getNativeID(), dtype=np.dtype('U100'))
+
+        # peptide sequence
+        peps = spec.getPeptideIdentifications()  # type: list[PeptideIdentification]
+        seq = ''
+        if peps:
+            hits = peps[0].getHits()
+            if hits:
+                seq = hits[0].getSequence().toString()
+        df['sequence'] = np.full(cnt, seq, dtype=np.dtype(f'U{len(seq)}'))
+
+        # ion annotations in string data array with names IonName or IonNames
+        ion_annotations = np.full(cnt, '', dtype=np.dtype('U1'))
+        for sda in spec.getStringDataArrays():
+            if sda.getName() == 'IonNames':
+                decoded = [ion.decode() for ion in sda]
+                if len(decoded) == df.shape[0]:
+                    ion_annotations = np.array(decoded, dtype=np.dtype(f'U{len(max(decoded))}'))
+                    break
+        df['ion_annotation'] = ion_annotations
+
+        if export_meta_values:
+            df = _add_meta_values(df, spec)
+
+        return df
+
 def plot_bpc_tic() -> go.Figure:
     """Plot the base peak and total ion chromatogram (TIC).
 

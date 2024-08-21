@@ -1,16 +1,22 @@
 import streamlit as st
 import pyopenms as poms
+import os
 from pathlib import Path
 import shutil
 import subprocess
 from typing import Any, Union, List
 import json
+import commentjson as cjson
+import re
 import sys
 import importlib.util
 import time
 from io import BytesIO
 import zipfile
 from datetime import datetime
+
+from .SageConfigUI import SageConfigUI
+from ..common import OS_PLATFORM
 
 class StreamlitUI:
     """
@@ -28,12 +34,33 @@ class StreamlitUI:
         self.parameter_manager = paramter_manager
         self.params = self.parameter_manager.get_parameters_from_json()
 
+    def tk_directory_dialog(self, title: str = "Select Directory", parent_dir: str = os.getcwd()):
+        """
+        Creates a Tkinter directory dialog for selecting a directory.
+
+        Args:
+            title (str): The title of the file dialog.
+            parent_dir (str): The path to the parent directory of the file dialog.
+
+        Returns:
+            str: The path to the selected file.
+        
+        Warning:
+            This function is not avaliable in a streamlit cloud context.
+        """
+        from tkinter import Tk, filedialog
+        root = Tk()
+        root.withdraw()
+        file_path = filedialog.askdirectory(title=title, initialdir=parent_dir)
+        root.destroy()
+        return file_path
+
     def upload_widget(
         self,
         key: str,
-        file_type: str,
+        file_types: Union[str, List[str]],
         name: str = "",
-        fallback: Union[List, str] = None,
+        fallback: Union[List, str] = None
     ) -> None:
         """
         Handles file uploads through the Streamlit interface, supporting both direct
@@ -42,17 +69,19 @@ class StreamlitUI:
 
         Args:
             key (str): A unique identifier for the upload component.
-            file_type (str): Expected file type for the uploaded files.
+            file_types (Union[str, List[str]]): Expected file type(s) for the uploaded files.
             name (str, optional): Display name for the upload component. Defaults to the key if not provided.
             fallback (Union[List, str], optional): Default files to use if no files are uploaded.
         """
         files_dir = Path(self.workflow_dir, "input-files", key)
-        
+
         # create the files dir
         files_dir.mkdir(exist_ok=True, parents=True)
 
         # check if only fallback files are in files_dir, if yes, reset the directory before adding new files
-        if [Path(f).name for f in Path(files_dir).iterdir()] == [Path(f).name for f in fallback]:
+        if [Path(f).name for f in Path(files_dir).iterdir()] == [
+            Path(f).name for f in fallback
+        ]:
             shutil.rmtree(files_dir)
             files_dir.mkdir()
 
@@ -62,10 +91,13 @@ class StreamlitUI:
         c1, c2 = st.columns(2)
         c1.markdown("**Upload file(s)**")
         with c1.form(f"{key}-upload", clear_on_submit=True):
-            if any(c.isupper() for c in file_type) and (c.islower() for c in file_type):
-                file_type_for_uploader = None
-            else:
-                file_type_for_uploader = [file_type]
+            # Convert file_types to a list if it's a string
+            if isinstance(file_types, str):
+                file_types = [file_types]
+
+            # Streamlit file uploader accepts file types as a list or None
+            file_type_for_uploader = file_types if file_types else None
+
             files = st.file_uploader(
                 f"{name}",
                 accept_multiple_files=(st.session_state.location == "local"),
@@ -80,9 +112,10 @@ class StreamlitUI:
                     if not isinstance(files, list):
                         files = [files]
                     for f in files:
-                        if f.name not in [
-                            f.name for f in files_dir.iterdir()
-                        ] and f.name.endswith(file_type):
+                        # Check if file type is in the list of accepted file types
+                        if f.name not in [f.name for f in files_dir.iterdir()] and any(
+                            f.name.endswith(ft) for ft in file_types
+                        ):
                             with open(Path(files_dir, f.name), "wb") as fh:
                                 fh.write(f.getbuffer())
                     st.success("Successfully added uploaded files!")
@@ -91,27 +124,61 @@ class StreamlitUI:
 
         # Local file upload option: via directory path
         if st.session_state.location == "local":
-            c2.markdown("**OR copy files from local folder**")
-            with c2.form(f"{key}-local-file-upload"):
-                local_dir = st.text_input(f"path to folder with **{name}** files")
-                if st.form_submit_button(
-                    f"Copy **{name}** files from local folder", use_container_width=True
-                ):
-                    # raw string for file paths
-                    if not any(Path(local_dir).glob(f"*.{file_type}")):
+            c2_text, c2_checkbox = c2.columns([1.5, 1], gap="large")
+            c2_text.markdown("**OR copy files from local folder**")
+            use_copy = c2_checkbox.checkbox("Make a copy of files", key=f"{key}-copy_files", value=True, help="Create a copy of files in workspace.")
+            with c2.container(border=True):
+                st_cols = st.columns([0.05, 0.55], gap="small")
+                with st_cols[0]:
+                    st.write("\n")
+                    st.write("\n")
+                    dialog_button = st.button("📁", key='local_browse', help="Browse for your local directory with MS data.")
+                    if dialog_button:
+                        st.session_state["local_dir"] = self.tk_directory_dialog("Select directory with your MS data", st.session_state["previous_dir"])
+                        st.session_state["previous_dir"] = st.session_state["local_dir"]
+
+                with st_cols[1]:
+                    local_dir = st.text_input(f"path to folder with **{name}** files", value=st.session_state["local_dir"])
+                    
+                if c2.button(f"Copy **{name}** files from local folder", use_container_width=True):
+                    files = []
+                    local_dir = Path(
+                        local_dir
+                    ).expanduser()  # Expand ~ to full home directory path
+
+                    for ft in file_types:
+                        # Search for both files and directories with the specified extension
+                        for path in local_dir.iterdir():
+                            if path.is_file() and path.name.endswith(f".{ft}"):
+                                files.append(path)
+                            elif path.is_dir() and path.name.endswith(f".{ft}"):
+                                files.append(path)
+
+                    if not files:
                         st.warning(
-                            f"No files with type **{file_type}** found in specified folder."
+                            f"No files with type **{', '.join(file_types)}** found in specified folder."
                         )
                     else:
-                        # Copy all mzML files to workspace mzML directory, add to selected files
-                        files = list(Path(local_dir).glob("*.mzML"))
                         my_bar = st.progress(0)
                         for i, f in enumerate(files):
                             my_bar.progress((i + 1) / len(files))
-                            shutil.copy(f, Path(files_dir, f.name))
+                            if use_copy:
+                                if os.path.isfile(f):
+                                    shutil.copy(f, Path(files_dir, f.name))
+                                elif os.path.isdir(f):
+                                    shutil.copytree(f, Path(files_dir, f.name), dirs_exist_ok=True)
+                            else:
+                                # Do we need to change the reference of Path(st.session_state.workspace, "mzML-files") to point to local dir? 
+                                pass
                         my_bar.empty()
                         st.success("Successfully copied files!")
-
+            if not use_copy:
+                c2.warning(
+        "**Warning**: You have deselected the `Make a copy of files` option. "
+        "This **_assumes you know what you are doing_**. "
+        "This means that the original files will be used instead. "
+    )
+                
         if fallback and not any(Path(files_dir).iterdir()):
             if isinstance(fallback, str):
                 fallback = [fallback]
@@ -144,11 +211,14 @@ class StreamlitUI:
             ):
                 shutil.rmtree(files_dir)
                 del self.params[key]
-                with open(self.parameter_manager.params_file, "w", encoding="utf-8") as f:
+                with open(
+                    self.parameter_manager.params_file, "w", encoding="utf-8"
+                ) as f:
                     json.dump(self.params, f, indent=4)
                 st.rerun()
         elif not fallback:
             st.warning(f"No **{name}** files!")
+
 
     def select_input_file(
         self,
@@ -388,7 +458,11 @@ class StreamlitUI:
         # write defaults ini files
         ini_file_path = Path(self.parameter_manager.ini_dir, f"{topp_tool_name}.ini")
         if not ini_file_path.exists():
-            subprocess.call([topp_tool_name, "-write_ini", str(ini_file_path)])
+            try:
+                subprocess.call([topp_tool_name, "-write_ini", str(ini_file_path)])
+            except FileNotFoundError as e:
+                st.error(f"An error occurred while executing '{topp_tool_name} -write_ini {str(ini_file_path)}': \n\n{e}\n\n Make sure that {topp_tool_name} is installed and an available system command.")
+                st.stop()
             # update custom defaults if necessary
             if custom_defaults:
                 param = poms.Param()
@@ -629,6 +703,56 @@ class StreamlitUI:
                     i = 0
                     cols = st.columns(num_cols)
 
+
+    def input_exec(
+        self,
+        executable_name: str,
+        executable_config_path: str,
+        num_cols: int = 3,
+        exclude_parameters: List[str] = [],
+        include_parameters: List[str] = [],
+        display_full_parameter_names: bool = False,
+        display_subsections: bool = False,
+        custom_defaults: dict = {},
+    ) -> None:
+        """
+        """
+        st.checkbox("Auto-Detect Executable", value=False, key=f"{executable_name}-auto-detect")
+        
+        if st.session_state[f"{executable_name}-auto-detect"]:
+            # Check for the Sage executable
+            exec_path = shutil.which(executable_name)
+
+            if exec_path:
+                st.success(f"{executable_name} executable found at: {exec_path}")
+                exec_input = st.text_input("Please enter the path to the Sage executable:", exec_path, key=f"{executable_name}-exec-path")
+            else:
+                st.warning(f"{executable_name} executable not found in the system PATH.")
+                exec_input = st.text_input("Please enter the path to the Sage executable:", "", key=f"{executable_name}-exec-path")
+        else:
+            exec_input = st.text_input("Please enter the path to the Sage executable:", "/home/singjc/Downloads/sage-v0.14.7-x86_64-unknown-linux-gnu/sage", key=f"{executable_name}-exec-path")
+            
+            # Check if the provided path is valid
+            if exec_input:
+                if os.path.isfile(exec_input) and os.access(exec_input, os.X_OK):
+                    st.success(f"Valid {executable_name} executable path: {exec_input}")
+                else:
+                    st.error("The provided path is not a valid executable. Please check and try again.")
+
+        if "sage_config" not in st.session_state:
+            # Read the configuration file (JSON)
+            config_path = Path(executable_config_path)
+            # Load the JSON file
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            st.session_state["sage_config"] = config
+        
+        # Create and display the UI
+        config_ui = SageConfigUI()
+        config_ui.display()
+        
+        
+
     def zip_and_download_files(self, directory: str):
         """
         Creates a zip archive of all files within a specified directory,
@@ -711,6 +835,7 @@ class StreamlitUI:
         self.parameter_manager.save_parameters()
 
     def execution_section(self, start_workflow_function) -> None:
+        st.write("## Execution")
         # Display a summary of non-default TOPP paramters and all others (custom and python scripts)
         summary_text = ""
         for key, value in self.params.items():

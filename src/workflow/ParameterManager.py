@@ -67,7 +67,9 @@ class ParameterManager:
         # Save to json file
         with open(self.params_file, "w", encoding="utf-8") as f:
             json.dump(json_params, f, indent=4)
+        info_msg = st.info(f"Parameters saved to {self.params_file}", icon="ℹ️")
 
+        
     def get_parameters_from_json(self) -> None:
         """
         Loads parameters from the JSON file if it exists and returns them as a dictionary.
@@ -94,4 +96,7 @@ class ParameterManager:
         # Delete custom params json file
         self.params_file.unlink(missing_ok=True)
         shutil.rmtree(self.ini_dir)
+        # Remove sage_config form session state
+        if "sage_config" in st.session_state:
+            del st.session_state["sage_config"]
         st.rerun()
