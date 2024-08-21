@@ -149,6 +149,27 @@ def msspectrum_get_df(spec, export_meta_values: bool = True) -> pd.DataFrame:
 
         return df
 
+def get_theo_spectrum(peptide):
+    tsg = poms.TheoreticalSpectrumGenerator()
+
+    theo_spectrum = poms.MSSpectrum()
+
+    p = tsg.getParameters()
+
+    p.setValue("add_y_ions", "true")
+
+    p.setValue("add_b_ions", "true")
+
+    p.setValue("add_metainfo", "true")
+
+    tsg.setParameters(p)
+
+    peptide = poms.AASequence.fromString(peptide)
+
+    tsg.getSpectrum(theo_spectrum, peptide, 1, 2)
+    
+    return theo_spectrum
+
 def plot_bpc_tic() -> go.Figure:
     """Plot the base peak and total ion chromatogram (TIC).
 
