@@ -8,6 +8,7 @@ from pathlib import Path
 
 import streamlit as st
 import pandas as pd
+import pyopenms as poms
 
 from .captcha_ import captcha_control
 
@@ -361,6 +362,17 @@ def reset_directory(path: Path) -> None:
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
 
+
+def load_fasta():
+    """
+    Load the FASTA database file into the session state.
+    """
+    
+    entries = []
+    f = poms.FASTAFile()
+    f.load(st.session_state["sage_config"]['database']['fasta'], entries)
+    if "fasta_database" not in st.session_state:
+        st.session_state["fasta_database"] = entries
 
 # General warning/error messages
 WARNINGS = {

@@ -1,6 +1,8 @@
 import streamlit as st
 import json
 
+from src.common import load_fasta
+
 class SageConfigUI:
     def __init__(self):
         # st.session_state["sage_config"] = config
@@ -102,6 +104,8 @@ class SageConfigUI:
         st.session_state["sage_config"]['database']['fasta'] = st.text_input(
             "FASTA Path", value=st.session_state["sage_config"]['database']['fasta']
         )
+        # Load FASTA
+        load_fasta()
 
         # Quant Configurations
         st.header("Quant Configuration")

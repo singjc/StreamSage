@@ -216,6 +216,18 @@ class SpectrumAlignment:
         df = pd.DataFrame(t, columns=["ion", "charge", "theo. m/z", "observed m/z"])
         
         return df
+
+def highlight_peptide(protein_seq, peptide_seq):
+    highlighted_seq = protein_seq
+    start = 0
+    while True:
+        start = protein_seq.find(peptide_seq, start)
+        if start == -1:
+            break
+        end = start + len(peptide_seq)
+        highlighted_seq = highlighted_seq[:start] + f"<span style='background-color:yellow'>{protein_seq[start:end]}</span>" + highlighted_seq[end:]
+        start = end
+    return highlighted_seq
         
 
 def plot_bpc_tic() -> go.Figure:
