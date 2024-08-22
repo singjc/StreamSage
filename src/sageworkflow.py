@@ -164,57 +164,61 @@ class SageWorkflow(WorkflowManager):
                 selected_row = single_file_df.iloc[rows, ]
                 selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
                 
-                od_exp, meta_data = load_ms_file(selected_mzml_file)
+                if not selected_mzml_file.endswith('.mzML'):
+                    st.error("Currently only mzML is supported for spectrum viewing. Other formats like Bruker .d will be supported  soon.")
+                else:
                 
-                spectrum = od_exp.getSpectrumByNativeId(selected_row['scannr'].values[0])
-                                
-                spec_df = msspectrum_get_df(spectrum)
-                spec_df['protein'] = selected_row['proteins'].values[0]
-                spec_df['peptide'] = selected_row['peptide'].values[0]
-                
-                # get theoretical spectrum
-                spec_theo = get_theo_spectrum(selected_row['peptide'].values[0])
-                spec_theo_df = msspectrum_get_df(spec_theo)
-                
-                spec_alignment = SpectrumAlignment(spectrum, spec_theo)
-                match_peaks_observed, match_peaks_theoretical = list(zip(*spec_alignment.alignment))
-                
-                obs_theo_match_df = spec_alignment.inspect()
-                obs_theo_match_df['observed m/z'] = obs_theo_match_df['observed m/z'].astype(float)
-                
-                # Merge the DataFrames on the observed m/z and mz columns
-                merged_df = spec_df.merge(obs_theo_match_df[['observed m/z', 'ion']], 
-                                            left_on='mz', 
-                                            right_on='observed m/z', 
-                                            how='left')
+                    od_exp, meta_data = load_ms_file(selected_mzml_file)
+                    
+                    spectrum = od_exp.getSpectrumByNativeId(selected_row['scannr'].values[0])
+                                    
+                    spec_df = msspectrum_get_df(spectrum)
+                    spec_df['protein'] = selected_row['proteins'].values[0]
+                    spec_df['peptide'] = selected_row['peptide'].values[0]
+                    
+                    # get theoretical spectrum
+                    spec_theo = get_theo_spectrum(selected_row['peptide'].values[0])
+                    spec_theo_df = msspectrum_get_df(spec_theo)
+                    
+                    spec_alignment = SpectrumAlignment(spectrum, spec_theo)
+                    match_peaks_observed, match_peaks_theoretical = list(zip(*spec_alignment.alignment))
+                    
+                    obs_theo_match_df = spec_alignment.inspect()
+                    obs_theo_match_df['observed m/z'] = obs_theo_match_df['observed m/z'].astype(float)
+                    
+                    # Merge the DataFrames on the observed m/z and mz columns
+                    merged_df = spec_df.merge(obs_theo_match_df[['observed m/z', 'ion']], 
+                                                left_on='mz', 
+                                                right_on='observed m/z', 
+                                                how='left')
 
-                # Fill ion_annotation with the ion values from df1 where there is a match
-                spec_df['ion_annotation'] = merged_df['ion']
+                    # Fill ion_annotation with the ion values from df1 where there is a match
+                    spec_df['ion_annotation'] = merged_df['ion']
 
-                spec_df['peak_color'] = np.where(spec_df.index.isin(match_peaks_theoretical), 'black', 'grey')
-                
-                # spec_theo_df['peak_color'] = np.where(spec_theo_df.index.isin(match_peaks_observed), 'black', 'grey')
-                
-                # st.write()
-                fig = spec_df.plot(x='mz', 
-                                   y='intensity', 
-                                   title=f"{selected_row['proteins'].values[0]} | {selected_row['peptide'].values[0]} <br><sup>{selected_row['scannr'].values[0]} @ RT = {selected_row['rt'].values[0]}</sup>", 
-                                   kind='spectrum', 
-                                   ion_annotation="ion_annotation",
-                                   peak_color="peak_color",
-                                   reference_spectrum=spec_theo_df, mirror_spectrum=True,
-                                   backend='ms_plotly', 
-                                   grid=False, show_plot=False)
-                
-                
-                
-                with c2:
-                    st.metric("Number of matched peaks: ", str(len(spec_alignment.alignment)))
-                    st.write(obs_theo_match_df)
-                
-                
-                
-                show_fig(fig.fig, f"mirror_spectrum_{selected_row['proteins'].values[0]}_{selected_row['peptide'].values[0]}_-_{selected_row['scannr'].values[0]}_at_RT = {selected_row['rt'].values[0]}")              
+                    spec_df['peak_color'] = np.where(spec_df.index.isin(match_peaks_theoretical), 'black', 'grey')
+                    
+                    # spec_theo_df['peak_color'] = np.where(spec_theo_df.index.isin(match_peaks_observed), 'black', 'grey')
+                    
+                    # st.write()
+                    fig = spec_df.plot(x='mz', 
+                                    y='intensity', 
+                                    title=f"{selected_row['proteins'].values[0]} | {selected_row['peptide'].values[0]} <br><sup>{selected_row['scannr'].values[0]} @ RT = {selected_row['rt'].values[0]}</sup>", 
+                                    kind='spectrum', 
+                                    ion_annotation="ion_annotation",
+                                    peak_color="peak_color",
+                                    reference_spectrum=spec_theo_df, mirror_spectrum=True,
+                                    backend='ms_plotly', 
+                                    grid=False, show_plot=False)
+                    
+                    
+                    
+                    with c2:
+                        st.metric("Number of matched peaks: ", str(len(spec_alignment.alignment)))
+                        st.write(obs_theo_match_df)
+                    
+                    
+                    
+                    show_fig(fig.fig, f"mirror_spectrum_{selected_row['proteins'].values[0]}_{selected_row['peptide'].values[0]}_-_{selected_row['scannr'].values[0]}_at_RT = {selected_row['rt'].values[0]}")              
                 
                 # Get protein sequence from entries based on protein ID for current result (selected_row['proteins'].values[0])
                 protein_sequence = [entry.sequence for entry in st.session_state["fasta_database"] if entry.identifier == selected_row['proteins'].values[0]]
