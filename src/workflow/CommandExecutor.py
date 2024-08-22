@@ -267,7 +267,7 @@ class CommandExecutor:
             # remove tmp params file
             tmp_params_file.unlink()
             
-    def run_exec(self, tool: str, config_file: str) -> None:
+    def run_exec(self, tool: str, config_file: str, batch_size: int=2) -> None:
         """
         Executes a specified executable with dynamic input and output parameters,
         optionally logging the execution process. The method constructs a command
@@ -283,7 +283,7 @@ class CommandExecutor:
             input_output (dict, optional): A dictionary specifying the input/output parameter names (as key) and their corresponding file paths (as value). Defaults to {}.
         """
         # Construct command
-        command = [tool, config_file, "--annotate-matches", "--batch-size", "5"]
+        command = [tool, "--annotate-matches", "--batch-size", batch_size, config_file]
         
         # Run command
         self.run_command(command)

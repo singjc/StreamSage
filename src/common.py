@@ -230,6 +230,8 @@ You can share this unique workspace ID with other people.
 
         # All pages have settings, workflow indicator and logo
         with st.expander("⚙️ **Settings**"):
+            st.number_input("batch size", 1, 100, 2, key="batch-size", help="Number of files to process in parallel.")
+            
             img_formats = ["svg", "png", "jpeg", "webp"]
             st.selectbox(
                 "image export format",

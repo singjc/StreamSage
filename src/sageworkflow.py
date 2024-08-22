@@ -82,7 +82,7 @@ class SageWorkflow(WorkflowManager):
         with open(Path(self.file_manager.workflow_dir, "sage_config.json"), "w") as json_file:
             json.dump(st.session_state["sage_config"], json_file, indent=2)
         
-        self.executor.run_exec(st.session_state['sage-exec-path'], str(Path(self.file_manager.workflow_dir, "sage_config.json")))
+        self.executor.run_exec(st.session_state['sage-exec-path'], str(Path(self.file_manager.workflow_dir, "sage_config.json")), st.session_state['batch-size'])
         
     @st.experimental_fragment
     def results(self) -> None:
