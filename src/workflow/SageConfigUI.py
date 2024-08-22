@@ -1,7 +1,8 @@
 import streamlit as st
+from pathlib import Path
 import json
 
-from src.common import load_fasta
+from src.common import TK_AVAILABLE, tk_file_dialog, load_fasta
 
 class SageConfigUI:
     def __init__(self):
@@ -101,11 +102,18 @@ class SageConfigUI:
         st.session_state["sage_config"]['database']['generate_decoys'] = cols[1].checkbox(
             "Generate Decoys", value=st.session_state["sage_config"]['database']['generate_decoys']
         )
-        st.session_state["sage_config"]['database']['fasta'] = st.text_input(
-            "FASTA Path", value=st.session_state["sage_config"]['database']['fasta']
-        )
+        
+        path = Path(st.session_state["workflow_dir"], "input-files", "fasta_database")
+        if not path.exists():
+            st.warning("No **FASTA** files!")
+            return
+        options = [str(f) for f in path.iterdir()]
+        
+        st.session_state["sage_config"]['database']['fasta'] = st.selectbox("FASTA Path", options)
+        
         # Load FASTA
-        load_fasta()
+        if st.session_state["sage_config"]['database']['fasta'] and Path(st.session_state["sage_config"]['database']['fasta']).exists():
+            load_fasta()
 
         # Quant Configurations
         st.header("Quant Configuration")

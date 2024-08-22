@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 
 import plotly.express as px
-from .view import load_ms_file, msspectrum_get_df, view_identifications, view_quantification, get_theo_spectrum, SpectrumAlignment
+from .view import load_ms_file, msspectrum_get_df, view_identifications, view_quantification, get_theo_spectrum, SpectrumAlignment, highlight_peptides
 from .common import show_fig
 from .workflow.WorkflowManager import WorkflowManager
 
@@ -27,8 +27,11 @@ class SageWorkflow(WorkflowManager):
         # Initialize the parent class with the workflow name.
         super().__init__("Sage Workflow", st.session_state["workspace"])
         
+        if "workflow_dir" not in st.session_state:
+            st.session_state["workflow_dir"] = self.workflow_dir
+        
     def upload(self) -> None:
-        t = st.tabs(["MS data"])
+        t = st.tabs(["MS data", "FASTA database", "Sage Config"])
         with t[0]:
             # Use the upload method from StreamlitUI to handle mzML file uploads.
             self.ui.upload_widget(
@@ -36,6 +39,24 @@ class SageWorkflow(WorkflowManager):
                 name="MS data",
                 file_types=["mzML", "mzXML", "d"],
                 fallback=[str(f) for f in Path("example-data", "mzML").glob("*.mzML")],
+            )
+            
+        with t[1]:
+            # Use the upload method from StreamlitUI to handle FASTA database uploads.
+            self.ui.upload_widget(
+                key="fasta_database",
+                name="FASTA database",
+                file_types=["fasta"],
+                fallback=[str(f) for f in Path("example-data", "fasta").glob("*.fasta")],
+            )
+            
+        with t[2]:
+            # Use the upload method from StreamlitUI to handle Sage config uploads.
+            self.ui.upload_widget(
+                key="sage-config",
+                name="Sage Config",
+                file_types=["json"],
+                fallback=[str(f) for f in Path("example-data", "sage_config_template.json").glob("*.json")],
             )
             
     @st.experimental_fragment
@@ -48,6 +69,7 @@ class SageWorkflow(WorkflowManager):
             ["**Sage**", "**SageAdapter**"]
         )
         with t[0]:
+            
             self.ui.input_exec('sage', Path('./assets/sage_config_template.json').resolve(), 4)
         
         # with t[1]:
@@ -130,7 +152,7 @@ class SageWorkflow(WorkflowManager):
             
             single_file_df = filtered_df[filtered_df['filename'] == selected_mzml_file]
             # Arrange by peptide
-            single_file_df = single_file_df.sort_values(by='peptide')
+            single_file_df = single_file_df.sort_values(by='proteins')
             
             c1, c2 = st.columns(2)
             c1.metric("Number of PSMs with q-values <= 0.01:", single_file_df.shape[0])
@@ -192,7 +214,24 @@ class SageWorkflow(WorkflowManager):
                 
                 
                 
-                show_fig(fig.fig, f"mirror_spectrum_{selected_row['proteins'].values[0]}_{selected_row['peptide'].values[0]}_-_{selected_row['scannr'].values[0]}_at_RT = {selected_row['rt'].values[0]}")
+                show_fig(fig.fig, f"mirror_spectrum_{selected_row['proteins'].values[0]}_{selected_row['peptide'].values[0]}_-_{selected_row['scannr'].values[0]}_at_RT = {selected_row['rt'].values[0]}")              
+                
+                # Get protein sequence from entries based on protein ID for current result (selected_row['proteins'].values[0])
+                protein_sequence = [entry.sequence for entry in st.session_state["fasta_database"] if entry.identifier == selected_row['proteins'].values[0]]
+                
+                # st.write(protein_sequence)
+                # st.write(selected_row['peptide'].values[0])
+                
+                # get peptide sequence from filtered_df for current protein
+                filtered_df_peptides = filtered_df[filtered_df['proteins'] == selected_row['proteins'].values[0]][['peptide']].values
+                filtered_df_peptides = list(np.unique(filtered_df_peptides))
+                
+                # st.write(filtered_df_peptides)
+                
+                highlighted_protein = highlight_peptides(protein_sequence[0], filtered_df_peptides, selected_row['peptide'].values[0])
+
+                st.markdown(f"<p style='font-family:monospace;'>{highlighted_protein}</p>", unsafe_allow_html=True)
+                
             else:
                 st.info(
                     "💡 Select one ore more rows in the table to show the spectrum plot."

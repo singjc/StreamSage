@@ -132,13 +132,13 @@ class StreamlitUI:
                 with st_cols[0]:
                     st.write("\n")
                     st.write("\n")
-                    dialog_button = st.button("📁", key='local_browse', help="Browse for your local directory with MS data.")
+                    dialog_button = st.button("📁", key=f'{key}_local_browse', help="Browse for your local directory with MS data.")
                     if dialog_button:
-                        st.session_state["local_dir"] = self.tk_directory_dialog("Select directory with your MS data", st.session_state["previous_dir"])
-                        st.session_state["previous_dir"] = st.session_state["local_dir"]
+                        st.session_state[f"{key}_local_dir"] = self.tk_directory_dialog("Select directory with your MS data", st.session_state[f"{key}_previous_dir"])
+                        st.session_state[f"{key}_previous_dir"] = st.session_state[f"{key}_local_dir"]
 
                 with st_cols[1]:
-                    local_dir = st.text_input(f"path to folder with **{name}** files", value=st.session_state["local_dir"])
+                    local_dir = st.text_input(f"path to folder with **{name}** files", value=st.session_state[f"{key}_local_dir"])
                     
                 if c2.button(f"Copy **{name}** files from local folder", use_container_width=True):
                     files = []
@@ -717,7 +717,7 @@ class StreamlitUI:
     ) -> None:
         """
         """
-        st.checkbox("Auto-Detect Executable", value=False, key=f"{executable_name}-auto-detect")
+        st.checkbox("Auto-Detect Executable", value=True, key=f"{executable_name}-auto-detect")
         
         if st.session_state[f"{executable_name}-auto-detect"]:
             # Check for the Sage executable
@@ -739,13 +739,21 @@ class StreamlitUI:
                 else:
                     st.error("The provided path is not a valid executable. Please check and try again.")
 
+        self.select_input_file("sage-config", multiple=False)
+
         if "sage_config" not in st.session_state:
+            st.session_state["sage_config"] = {}
+            
+        if "sage-config" not in self.params:
+            st.warning("Using default confguration.")
             # Read the configuration file (JSON)
             config_path = Path(executable_config_path)
-            # Load the JSON file
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            st.session_state["sage_config"] = config
+        else:
+            config_path = Path(self.params["sage-config"])
+        # Load the JSON file
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        st.session_state["sage_config"] = config
         
         # Create and display the UI
         config_ui = SageConfigUI()
