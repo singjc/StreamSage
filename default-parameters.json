@@ -5,5 +5,6 @@
 
     "example-x-dimension": 10,
     "example-y-dimension": 5,
-    "controllo": false 
+
+    "controllo": false
 }

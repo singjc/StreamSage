@@ -1,7 +1,7 @@
 # This Dockerfile builds OpenMS, the TOPP tools, pyOpenMS and thidparty tools.
 # It also adds a basic streamlit server that serves a pyOpenMS-based app.
 # hints:
-# build image and give it a name (here: streamlitapp) with: docker build --no-cache -t streamlitapp:latest --build-arg GITHUB_TOKEN=<your-github-token> . 2>&1 | tee build.log 
+# build image and give it a name (here: streamlitapp) with: docker build --no-cache -t streamlitapp:latest --build-arg GITHUB_TOKEN=<your-github-token> . 2>&1 | tee build.log
 # check if image was build: docker image ls
 # run container: docker run -p 8501:8501 streamlitappsimple:latest
 # debug container after build (comment out ENTRYPOINT) and run container with interactive /bin/bash shell
@@ -9,10 +9,11 @@
 
 FROM ubuntu:22.04 AS setup-build-system
 ARG OPENMS_REPO=https://github.com/OpenMS/OpenMS.git
-ARG OPENMS_BRANCH=develop
+ARG OPENMS_BRANCH=release/3.2.0
 ARG PORT=8501
 # GitHub token to download latest OpenMS executable for Windows from Github action artifact.
 ARG GITHUB_TOKEN
+ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
 ARG GITHUB_USER=OpenMS
 # Streamlit app Gihub repository name (to download artifact from).
@@ -32,12 +33,21 @@ RUN apt-get install -y --no-install-recommends --no-install-suggests libboost-da
                                                                      libboost-random1.74-dev
 RUN apt-get install -y --no-install-recommends --no-install-suggests qtbase5-dev libqt5svg5-dev libqt5opengl5-dev
 
-# Download and install mamba.
-ENV PATH="/root/mambaforge/bin:${PATH}"
+# Install Github CLI
+RUN (type -p wget >/dev/null || (apt-get update && apt-get install wget -y)) \
+	&& mkdir -p -m 755 /etc/apt/keyrings \
+	&& wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+	&& chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+	&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+	&& apt-get update \
+	&& apt-get install gh -y
+
+# Download and install miniforge.
+ENV PATH="/root/miniforge3/bin:${PATH}"
 RUN wget -q \
-    https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh \
-    && bash Mambaforge-Linux-x86_64.sh -b \
-    && rm -f Mambaforge-Linux-x86_64.sh
+    https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh \
+    && bash Miniforge3-Linux-x86_64.sh -b \
+    && rm -f Miniforge3-Linux-x86_64.sh
 RUN mamba --version
 
 # Setup mamba environment.
@@ -109,17 +119,23 @@ FROM compile-openms AS run-app
 
 # note: specifying folder with slash as suffix and repeating the folder name seems important to preserve directory structure
 WORKDIR /app
-COPY app.py /app/app.py 
-COPY src/ /app/src
 COPY assets/ /app/assets
-COPY example-data/ /app/example-data
 COPY content/ /app/content
+COPY docs/ /app/docs
+COPY example-data/ /app/example-data
+COPY gdpr_consent/ /app/gdpr_consent
+COPY hooks/ /app/hooks
+COPY src/ /app/src
+COPY app.py /app/app.py
+COPY settings.json /app/settings.json
+COPY default-parameters.json /app/default-parameters.json
+
 # For streamlit configuration
 COPY .streamlit/config.toml /app/.streamlit/config.toml
 COPY clean-up-workspaces.py /app/clean-up-workspaces.py
 
 # add cron job to the crontab
-RUN echo "0 3 * * * /root/mambaforge/envs/streamlit-env/bin/python /app/clean-up-workspaces.py >> /app/clean-up-workspaces.log 2>&1" | crontab -
+RUN echo "0 3 * * * /root/miniforge3/envs/streamlit-env/bin/python /app/clean-up-workspaces.py >> /app/clean-up-workspaces.log 2>&1" | crontab -
 
 # create entrypoint script to start cron service and launch streamlit app
 RUN echo "#!/bin/bash" > /app/entrypoint.sh
@@ -128,11 +144,19 @@ RUN echo "mamba run --no-capture-output -n streamlit-env streamlit run app.py" >
 # make the script executable
 RUN chmod +x /app/entrypoint.sh
 
+# Patch Analytics
+RUN mamba run -n streamlit-env python hooks/hook-analytics.py
+
+# Set Online Deployment
+RUN jq '.online_deployment = true' settings.json > tmp.json && mv tmp.json settings.json
+
 # Download latest OpenMS App executable for Windows from Github actions workflow.
-RUN WORKFLOW_ID=$(curl -s "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/workflows" | jq -r '.workflows[] | select(.name == "Build executable for Windows") | .id') \
-    && SUCCESSFUL_RUNS=$(curl -s "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/runs?workflow_id=$WORKFLOW_ID&status=success" | jq -r '.workflow_runs[0].id') \
-    && ARTIFACT_ID=$(curl -s "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/runs/$SUCCESSFUL_RUNS/artifacts" | jq -r '.artifacts[] | select(.name == "OpenMS-App") | .id') \
-    && curl -LJO -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_USER/$GITHUB_REPO/actions/artifacts/$ARTIFACT_ID/zip" -o /app/OpenMS-App
+RUN if [ -n "$GH_TOKEN" ]; then \
+        echo "GH_TOKEN is set, proceeding to download the release asset..."; \
+        gh run download -R ${GITHUB_USER}/${GITHUB_REPO} $(gh run list -R ${GITHUB_USER}/${GITHUB_REPO} -b main -e push -s completed -w "Build executable for Windows" --json databaseId -q '.[0].databaseId') -n OpenMS-App --dir /app; \
+    else \
+        echo "GH_TOKEN is not set, skipping the release asset download."; \
+    fi
 
 # Run app as container entrypoint.
 EXPOSE $PORT
