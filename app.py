@@ -2,7 +2,7 @@ import streamlit as st
 from pathlib import Path
 
 pages = {
-    "OpenMS Web App" : [
+    "StreamSage Web App" : [
         st.Page(Path("content", "quickstart.py"), title="Quickstart", icon="👋"),
         st.Page(Path("content", "documentation.py"), title="Documentation", icon="📖"),
     ],
