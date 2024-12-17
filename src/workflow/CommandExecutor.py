@@ -283,7 +283,7 @@ class CommandExecutor:
             input_output (dict, optional): A dictionary specifying the input/output parameter names (as key) and their corresponding file paths (as value). Defaults to {}.
         """
         # Construct command
-        command = [tool, "--annotate-matches", "--batch-size", batch_size, config_file]
+        command = [tool, "--batch-size", batch_size, config_file]
         
         # Run command
         self.run_command(command)

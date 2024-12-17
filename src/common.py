@@ -112,7 +112,35 @@ def page_setup(page: str = "") -> dict[str, Any]:
         menu_items=None,
     )
 
-    st.logo("assets/pyopenms_transparent_background.png")
+    st.markdown("""
+        <style>
+            .main > div {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            .reportview-container {
+                margin-top: -2em;
+            }
+            #MainMenu {visibility: hidden;}
+            .stDeployButton {display:none;}
+            footer {visibility: hidden;}
+            #stDecoration {display:none;}
+            #stHeader {display:none;}
+            .st-emotion-cache-12fmjuu {
+                margin-top: -2em;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # st.logo("assets/pyopenms_transparent_background.png")
+    st.logo("assets/StreamSage.png")
+    st.html("""
+  <style>
+    [alt=Logo] {
+      height: 6rem;
+    }
+  </style>
+        """)
 
     # Determine the workspace for the current session
     if "workspace" not in st.session_state:
@@ -211,6 +239,8 @@ You can share this unique workspace ID with other people.
                     st.session_state.workspace = Path(
                         workspaces_dir, st.session_state["chosen-workspace"]
                     )
+                    if "workflow_dir" not in st.session_state or Path(st.session_state["workflow_dir"]).parent != st.session_state.workspace:
+                        st.session_state["workflow_dir"] = Path(st.session_state.workspace, "sage-workflow")
 
                 # Get all available workspaces as options
                 options = [

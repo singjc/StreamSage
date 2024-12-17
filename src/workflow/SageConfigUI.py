@@ -39,9 +39,13 @@ class SageConfigUI:
             enzyme['c_terminal'] = cols[2].checkbox(
                 "C Terminal", value=enzyme['c_terminal']
             )
+            if not enzyme['c_terminal']:
+                enzyme['c_terminal'] = None
             enzyme['semi_enzymatic'] = cols[3].checkbox(
                 "Semi Enzymatic", value=enzyme['semi_enzymatic']
             )
+            if not enzyme['semi_enzymatic']:
+                enzyme['semi_enzymatic'] = None
 
         cols = st.columns(3)
         st.session_state["sage_config"]['database']['fragment_min_mz'] = cols[0].number_input(
@@ -102,8 +106,8 @@ class SageConfigUI:
         st.session_state["sage_config"]['database']['generate_decoys'] = cols[1].checkbox(
             "Generate Decoys", value=st.session_state["sage_config"]['database']['generate_decoys']
         )
-        
-        path = Path(st.session_state["workflow_dir"], "input-files", "fasta_database")
+
+        path = Path(st.session_state.workflow_dir, "input-files", "fasta_database")
         if not path.exists():
             st.warning("No **FASTA** files!")
             return
@@ -218,9 +222,11 @@ class SageConfigUI:
         st.session_state["sage_config"]['report_psms'] = cols[2].number_input(
             "Report PSMs", value=st.session_state["sage_config"]['report_psms'], step=1
         )
-        st.session_state["sage_config"]['output_directory'] = cols[3].text_input(
-            "Output Directory", value=st.session_state["sage_config"]['output_directory']
-        )
+        
+        if "output_directory" in st.session_state["sage_config"]:
+            st.session_state["sage_config"]['output_directory'] = cols[3].text_input(
+                "Output Directory", value=st.session_state["sage_config"]['output_directory']
+            )
         st.session_state["sage_config"]['mzml_paths'] = st.text_area(
             "mzML Paths", value="\n".join(st.session_state["sage_config"]['mzml_paths'])
         )
