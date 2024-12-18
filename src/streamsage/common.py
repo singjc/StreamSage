@@ -33,7 +33,9 @@ def download_and_unpack_sage_exec(target_dir="./bin/", version="v0.14.7"):
 
     # Determine the URL based on the platform
     if sys.platform == "win32":
-        url = f"{base_url}/{version}/sage-{version}-x86_64-pc-windows-msvc.zip"
+        # NOTE: The v0.14.7 release for windows does not work.
+        # url = f"{base_url}/{version}/sage-{version}-x86_64-pc-windows-msvc.zip"
+        url = "https://github.com/singjc/StreamSage/releases/download/v0.0.1-alpha/sage-v0.14.7-x86_64-pc-windows-msvc.zip"
         file_extension = ".zip"
         executable_name = "sage.exe"
     elif sys.platform == "linux" or sys.platform == "linux2":
