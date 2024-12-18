@@ -23,7 +23,7 @@ from src.common.common import (
     tk_directory_dialog,
     tk_file_dialog,
 )
-
+from ..streamsage.common import download_and_unpack_sage_exec
 
 from .SageConfigUI import SageConfigUI
 
@@ -902,7 +902,17 @@ class StreamlitUI:
     ) -> None:
         """
         """
-        st.checkbox("Auto-Detect Executable", value=True, key=f"{executable_name}-auto-detect")
+        # Create two columns
+        col1, col2 = st.columns(2)
+
+        # Place the checkbox in the first column
+        with col1:
+            st.checkbox("Auto-Detect Executable", value=True, key=f"{executable_name}-auto-detect")
+
+        # Place the button in the second column
+        with col2:
+            if st.button("Download and Install Sage Executable"):
+                st.session_state[f"{executable_name}-exec-path"] = download_and_unpack_sage_exec(target_dir="bin")
         
         if st.session_state[f"{executable_name}-auto-detect"]:
             # Check for the Sage executable
@@ -910,17 +920,17 @@ class StreamlitUI:
 
             if exec_path:
                 st.success(f"{executable_name} executable found at: {exec_path}")
-                exec_input = st.text_input("Please enter the path to the Sage executable:", exec_path, key=f"{executable_name}-exec-path")
+                st.session_state[f"{executable_name}-exec-path"] = st.text_input("Please enter the path to the Sage executable:", exec_path)
             else:
                 st.warning(f"{executable_name} executable not found in the system PATH.")
-                exec_input = st.text_input("Please enter the path to the Sage executable:", "", key=f"{executable_name}-exec-path")
+                st.session_state[f"{executable_name}-exec-path"] = st.text_input("Please enter the path to the Sage executable:")
         else:
-            exec_input = st.text_input("Please enter the path to the Sage executable:", "/home/singjc/Downloads/sage-v0.14.7-x86_64-unknown-linux-gnu/sage", key=f"{executable_name}-exec-path")
+            st.session_state[f"{executable_name}-exec-path"]  = st.text_input("Please enter the path to the Sage executable:", st.session_state[f"{executable_name}-exec-path"])
             
             # Check if the provided path is valid
-            if exec_input:
-                if os.path.isfile(exec_input) and os.access(exec_input, os.X_OK):
-                    st.success(f"Valid {executable_name} executable path: {exec_input}")
+            if st.session_state[f"{executable_name}-exec-path"] :
+                if os.path.isfile(st.session_state[f"{executable_name}-exec-path"] ) and os.access(st.session_state[f"{executable_name}-exec-path"] , os.X_OK):
+                    st.success(f"""Valid {executable_name} executable path: {st.session_state[f"{executable_name}-exec-path"] }""")
                 else:
                     st.error("The provided path is not a valid executable. Please check and try again.")
 

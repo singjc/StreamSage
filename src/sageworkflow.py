@@ -67,20 +67,11 @@ class SageWorkflow(WorkflowManager):
 
         # Create tabs for different analysis steps.
         t = st.tabs(
-            ["**Sage**", "**SageAdapter**"]
+            ["**Sage**"]
         )
         with t[0]:
-
             self.ui.input_exec('sage', Path('./assets/sage_config_template.json').resolve(), 4)
 
-        # with t[1]:
-        #     try:
-        #         self.ui.input_TOPP(
-        #             "SageAdapter",
-        #             custom_defaults={},
-        #         )
-        #     except FileNotFoundError as e:
-        #         st.error(f"An error occurred while trying to configure SageAdapter: {e}")
 
     @st.fragment
     def execution(self) -> None:
