@@ -31,7 +31,16 @@ class SageConfigUI:
         if not path.exists():
             st.warning("No **FASTA** files!")
             return
-        options = [str(f) for f in path.iterdir()]
+        options = []
+        for file in path.iterdir():
+            if file.suffix in [".fasta", ".fas"]:
+                options.append(file)
+            if file.name == "external_files.txt":
+                with open(file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.endswith(".fasta") or line.endswith(".fas"):
+                            options.append(line)
         
         st.session_state["sage_config"]['database']['fasta'] = st.selectbox("FASTA Path", options)
         
