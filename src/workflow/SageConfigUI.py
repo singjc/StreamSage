@@ -216,12 +216,12 @@ class SageConfigUI:
         st.session_state["sage_config"]['precursor_tol']['ppm'] = cols[0].text_input(
             "Precursor Tolerance (ppm)", value=", ".join(map(str, st.session_state["sage_config"]['precursor_tol']['ppm']))
         )
-        st.session_state["sage_config"]['precursor_tol']['ppm'] = [int(x.strip()) for x in st.session_state["sage_config"]['precursor_tol']['ppm'].split(',')]
+        st.session_state["sage_config"]['precursor_tol']['ppm'] = [float(x.strip()) for x in st.session_state["sage_config"]['precursor_tol']['ppm'].split(',')]
 
         st.session_state["sage_config"]['fragment_tol']['ppm'] = cols[1].text_input(
             "Fragment Tolerance (ppm)", value=", ".join(map(str, st.session_state["sage_config"]['fragment_tol']['ppm']))
         )
-        st.session_state["sage_config"]['fragment_tol']['ppm'] = [int(x.strip()) for x in st.session_state["sage_config"]['fragment_tol']['ppm'].split(',')]
+        st.session_state["sage_config"]['fragment_tol']['ppm'] = [float(x.strip()) for x in st.session_state["sage_config"]['fragment_tol']['ppm'].split(',')]
         
     def _other_settings(self):
         st.header("Other Configurations")
