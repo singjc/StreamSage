@@ -141,122 +141,127 @@ class SageWorkflow(WorkflowManager):
                 show_fig(fig, "Quantification")
 
             selected_mzml_file = st.selectbox("Select file", filtered_df['filename'].unique())
+            
+            if selected_mzml_file.endswith('.mzML'):
 
-            single_file_df = filtered_df[filtered_df['filename'] == selected_mzml_file]
-            # Arrange by peptide
-            single_file_df = single_file_df.sort_values(by='proteins')
+                single_file_df = filtered_df[filtered_df['filename'] == selected_mzml_file]
+                
+                # Arrange by peptide
+                single_file_df = single_file_df.sort_values(by='proteins')
 
-            st.markdown(
-                        """
-                    <style>
-                    [data-testid="stMetricValue"] {
-                        font-size: 22px;
-                    }
-                    </style>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-            c1, c2 = st.columns(2)
-            c1.metric("Number of PSMs with q-values <= 0.01:", single_file_df.shape[0])
-            rows = c1.dataframe(single_file_df, selection_mode="single-row", on_select="rerun")[
-                "selection"
-            ]["rows"]
-
-            if rows:
-                selected_row = single_file_df.iloc[rows, ]
-                selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
-
-                if not selected_mzml_file.endswith('.mzML'):
-                    st.error("Currently only mzML is supported for spectrum viewing. Other formats like Bruker .d will be supported  soon.")
-                else:
-
-                    od_exp, meta_data = load_ms_file(selected_mzml_file)
-
-                    spectrum = od_exp.getSpectrumByNativeId(selected_row['scannr'].values[0])
-
-                    spec_df = msspectrum_get_df(spectrum)
-                    spec_df['protein'] = selected_row['proteins'].values[0]
-                    spec_df['peptide'] = selected_row['peptide'].values[0]
-
-                    # get theoretical spectrum
-                    spec_theo = get_theo_spectrum(selected_row['peptide'].values[0])
-                    spec_theo_df = msspectrum_get_df(spec_theo)
-
-                    spec_alignment = SpectrumAlignment(spectrum, spec_theo)
-                    match_peaks_observed, match_peaks_theoretical = list(zip(*spec_alignment.alignment))
-
-                    obs_theo_match_df = spec_alignment.inspect()
-                    obs_theo_match_df['observed m/z'] = obs_theo_match_df['observed m/z'].astype(float)
-
-                    # Merge the DataFrames on the observed m/z and mz columns
-                    merged_df = spec_df.merge(obs_theo_match_df[['observed m/z', 'ion']], 
-                                                left_on='mz', 
-                                                right_on='observed m/z', 
-                                                how='left')
-
-                    # Fill ion_annotation with the ion values from df1 where there is a match
-                    spec_df['ion_annotation'] = merged_df['ion']
-
-                    spec_df['peak_color'] = np.where(spec_df.index.isin(match_peaks_theoretical), 'black', 'grey')
-
-                    # spec_theo_df['peak_color'] = np.where(spec_theo_df.index.isin(match_peaks_observed), 'black', 'grey')
-
-                    # st.write()
-                    fig = spec_df.plot(x='mz', 
-                                    y='intensity', 
-                                    title=f"{selected_row['proteins'].values[0]} | {selected_row['peptide'].values[0]} <br><sup>{selected_row['scannr'].values[0]} @ RT = {selected_row['rt'].values[0]}</sup>", 
-                                    kind='spectrum', bin_peaks=False,
-                                    ion_annotation="ion_annotation",
-                                    # peak_color="peak_color",
-                                    height=400,
-                                    annotation_font_size=18,
-                                    annotate_top_n_peaks=5,
-                                    reference_spectrum=spec_theo_df, mirror_spectrum=True,
-                                    backend='ms_plotly', 
-                                    grid=False, show_plot=False)
-
-                    fig = fig.fig
-                    fig.update_layout(
-                        hoverlabel=dict(
-                            font_size=16
+                st.markdown(
+                            """
+                        <style>
+                        [data-testid="stMetricValue"] {
+                            font-size: 22px;
+                        }
+                        </style>
+                        """,
+                            unsafe_allow_html=True,
                         )
+
+                c1, c2 = st.columns(2)
+                c1.metric("Number of PSMs with q-values <= 0.01:", single_file_df.shape[0])
+                rows = c1.dataframe(single_file_df, selection_mode="single-row", on_select="rerun")[
+                    "selection"
+                ]["rows"]
+
+                if rows:
+                    selected_row = single_file_df.iloc[rows, ]
+                    selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
+
+                    if not selected_mzml_file.endswith('.mzML'):
+                        st.error("Currently only mzML is supported for spectrum viewing. Other formats like Bruker .d will be supported  soon.")
+                    else:
+
+                        od_exp, meta_data = load_ms_file(selected_mzml_file)
+
+                        spectrum = od_exp.getSpectrumByNativeId(selected_row['scannr'].values[0])
+
+                        spec_df = msspectrum_get_df(spectrum)
+                        spec_df['protein'] = selected_row['proteins'].values[0]
+                        spec_df['peptide'] = selected_row['peptide'].values[0]
+
+                        # get theoretical spectrum
+                        spec_theo = get_theo_spectrum(selected_row['peptide'].values[0])
+                        spec_theo_df = msspectrum_get_df(spec_theo)
+
+                        spec_alignment = SpectrumAlignment(spectrum, spec_theo)
+                        match_peaks_observed, match_peaks_theoretical = list(zip(*spec_alignment.alignment))
+
+                        obs_theo_match_df = spec_alignment.inspect()
+                        obs_theo_match_df['observed m/z'] = obs_theo_match_df['observed m/z'].astype(float)
+
+                        # Merge the DataFrames on the observed m/z and mz columns
+                        merged_df = spec_df.merge(obs_theo_match_df[['observed m/z', 'ion']], 
+                                                    left_on='mz', 
+                                                    right_on='observed m/z', 
+                                                    how='left')
+
+                        # Fill ion_annotation with the ion values from df1 where there is a match
+                        spec_df['ion_annotation'] = merged_df['ion']
+
+                        spec_df['peak_color'] = np.where(spec_df.index.isin(match_peaks_theoretical), 'black', 'grey')
+
+                        # spec_theo_df['peak_color'] = np.where(spec_theo_df.index.isin(match_peaks_observed), 'black', 'grey')
+
+                        # st.write()
+                        fig = spec_df.plot(x='mz', 
+                                        y='intensity', 
+                                        title=f"{selected_row['proteins'].values[0]} | {selected_row['peptide'].values[0]} <br><sup>{selected_row['scannr'].values[0]} @ RT = {selected_row['rt'].values[0]}</sup>", 
+                                        kind='spectrum', bin_peaks=False,
+                                        ion_annotation="ion_annotation",
+                                        # peak_color="peak_color",
+                                        height=400,
+                                        annotation_font_size=18,
+                                        annotate_top_n_peaks=5,
+                                        reference_spectrum=spec_theo_df, mirror_spectrum=True,
+                                        backend='ms_plotly', 
+                                        grid=False, show_plot=False)
+
+                        # fig = fig.fig
+                        fig.update_layout(
+                            hoverlabel=dict(
+                                font_size=16
+                            )
+                        )
+                        # Update axis labels font size
+                        fig.update_xaxes(title_font_size=20)
+                        fig.update_yaxes(title_font_size=20)
+                        # Update axis tick labels font size
+                        fig.update_xaxes(tickfont_size=19)
+                        fig.update_yaxes(tickfont_size=19)
+                        # Update title font size
+                        fig.update_layout(title_font_size=21)
+
+                        with c2:
+                            st.metric("Number of matched peaks: ", str(len(spec_alignment.alignment)))
+                            st.write(obs_theo_match_df)
+
+                        show_fig(fig, f"mirror_spectrum_{selected_row['proteins'].values[0]}_{selected_row['peptide'].values[0]}_-_{selected_row['scannr'].values[0]}_at_RT = {selected_row['rt'].values[0]}")              
+
+                    # Get protein sequence from entries based on protein ID for current result (selected_row['proteins'].values[0])
+                    protein_sequence = [entry.sequence for entry in st.session_state["fasta_database"] if entry.identifier == selected_row['proteins'].values[0]]
+
+                    # st.write(protein_sequence)
+                    # st.write(selected_row['peptide'].values[0])
+
+                    # get peptide sequence from filtered_df for current protein
+                    filtered_df_peptides = filtered_df[filtered_df['proteins'] == selected_row['proteins'].values[0]][['peptide']].values
+                    filtered_df_peptides = list(np.unique(filtered_df_peptides))
+
+                    # st.write(filtered_df_peptides)
+
+                    highlighted_protein = highlight_peptides(protein_sequence[0], filtered_df_peptides, selected_row['peptide'].values[0])
+
+                    st.markdown(f"<p style='font-family:monospace;'>{highlighted_protein}</p>", unsafe_allow_html=True)
+
+                else:
+                    st.info(
+                        "💡 Select one ore more rows in the table to show the spectrum plot."
                     )
-                    # Update axis labels font size
-                    fig.update_xaxes(title_font_size=20)
-                    fig.update_yaxes(title_font_size=20)
-                    # Update axis tick labels font size
-                    fig.update_xaxes(tickfont_size=19)
-                    fig.update_yaxes(tickfont_size=19)
-                    # Update title font size
-                    fig.update_layout(title_font_size=21)
-
-                    with c2:
-                        st.metric("Number of matched peaks: ", str(len(spec_alignment.alignment)))
-                        st.write(obs_theo_match_df)
-
-                    show_fig(fig, f"mirror_spectrum_{selected_row['proteins'].values[0]}_{selected_row['peptide'].values[0]}_-_{selected_row['scannr'].values[0]}_at_RT = {selected_row['rt'].values[0]}")              
-
-                # Get protein sequence from entries based on protein ID for current result (selected_row['proteins'].values[0])
-                protein_sequence = [entry.sequence for entry in st.session_state["fasta_database"] if entry.identifier == selected_row['proteins'].values[0]]
-
-                # st.write(protein_sequence)
-                # st.write(selected_row['peptide'].values[0])
-
-                # get peptide sequence from filtered_df for current protein
-                filtered_df_peptides = filtered_df[filtered_df['proteins'] == selected_row['proteins'].values[0]][['peptide']].values
-                filtered_df_peptides = list(np.unique(filtered_df_peptides))
-
-                # st.write(filtered_df_peptides)
-
-                highlighted_protein = highlight_peptides(protein_sequence[0], filtered_df_peptides, selected_row['peptide'].values[0])
-
-                st.markdown(f"<p style='font-family:monospace;'>{highlighted_protein}</p>", unsafe_allow_html=True)
-
             else:
-                st.info(
-                    "💡 Select one ore more rows in the table to show the spectrum plot."
-                )
+                st.error("Currently only mzML is supported for spectrum viewing.")
 
         file = Path(
             self.workflow_dir, "results", "results.sage.tsv"
@@ -264,4 +269,4 @@ class SageWorkflow(WorkflowManager):
         if file.exists():
             show_consensus_features()
         else:
-            st.warning("No consensus feature file found. Please run workflow first.")
+            st.warning("No results file found. Please run workflow first.")
