@@ -14,10 +14,54 @@ class SageConfigUI:
         st.title("Configuration Settings")
 
         # Database Configurations
-        st.header("Database Configuration")
-        st.session_state["sage_config"]['database']['bucket_size'] = st.number_input(
-            "Bucket Size", value=st.session_state["sage_config"]['database']['bucket_size'], step=1
+        self._database_settings()
+
+        # Modifications Configurations
+        self._modifications_settings()
+        
+        cols = st.columns(2)
+        st.session_state["sage_config"]['database']['decoy_tag'] = cols[0].text_input(
+            "Decoy Tag", value=st.session_state["sage_config"]['database']['decoy_tag']
         )
+        st.session_state["sage_config"]['database']['generate_decoys'] = cols[1].checkbox(
+            "Generate Decoys", value=st.session_state["sage_config"]['database']['generate_decoys']
+        )
+
+        path = Path(st.session_state.workflow_dir, "input-files", "fasta_database")
+        if not path.exists():
+            st.warning("No **FASTA** files!")
+            return
+        options = [str(f) for f in path.iterdir()]
+        
+        st.session_state["sage_config"]['database']['fasta'] = st.selectbox("FASTA Path", options)
+        
+        # Load FASTA
+        if st.session_state["sage_config"]['database']['fasta'] and Path(st.session_state["sage_config"]['database']['fasta']).exists():
+            load_fasta()
+
+        # Quant Configurations
+        st.header("Quant Configuration")
+        self._quant_settings()
+
+        # Tolerances
+        self._tolerance_settings()
+
+        # Other Configurations
+        self._other_settings()
+        
+        # Bruker Processor Settings
+        if "bruker_spectrum_processor" in st.session_state["sage_config"]:
+            self._bruker_processor_settings()
+        
+        self._input_output_settings()
+
+        # # Save Configuration
+        # if st.button("Save Configuration"):
+        #     with open("updated_config.json", "w") as json_file:
+        #         json.dump(st.session_state["sage_config"], json_file, indent=2)
+        #     st.success("Configuration saved!")
+        
+    def _enzyme_setting(self):
         with st.expander("Enzyme: Expand for more options"):
             cols = st.columns(3)
             enzyme = st.session_state["sage_config"]['database']['enzyme']
@@ -47,6 +91,13 @@ class SageConfigUI:
             )
             if not enzyme['semi_enzymatic']:
                 enzyme['semi_enzymatic'] = None
+    
+    def _database_settings(self):
+        st.header("Database Configuration")
+        st.session_state["sage_config"]['database']['bucket_size'] = st.number_input(
+            "Bucket Size", value=st.session_state["sage_config"]['database']['bucket_size'], step=1
+        )
+        self._enzyme_setting()
 
         cols = st.columns(3)
         st.session_state["sage_config"]['database']['fragment_min_mz'] = cols[0].number_input(
@@ -68,9 +119,10 @@ class SageConfigUI:
         st.session_state["sage_config"]['database']['min_ion_index'] = cols[2].number_input(
             "Min Ion Index", value=st.session_state["sage_config"]['database']['min_ion_index'], step=1
         )
-
+        
+    def _modifications_settings(self):
         cols = st.columns(2)
-         # Static Mods
+        # Static Mods
         cols[0].subheader("Static Modifications")
         static_mods_input = cols[0].text_area(
             "Static Mods (format: key\:value, one per line)",
@@ -99,29 +151,8 @@ class SageConfigUI:
         st.session_state["sage_config"]['database']['max_variable_mods'] = st.number_input(
             "Max Variable Mods", value=st.session_state["sage_config"]['database']['max_variable_mods'], step=1
         )
-        
-        cols = st.columns(2)
-        st.session_state["sage_config"]['database']['decoy_tag'] = cols[0].text_input(
-            "Decoy Tag", value=st.session_state["sage_config"]['database']['decoy_tag']
-        )
-        st.session_state["sage_config"]['database']['generate_decoys'] = cols[1].checkbox(
-            "Generate Decoys", value=st.session_state["sage_config"]['database']['generate_decoys']
-        )
-
-        path = Path(st.session_state.workflow_dir, "input-files", "fasta_database")
-        if not path.exists():
-            st.warning("No **FASTA** files!")
-            return
-        options = [str(f) for f in path.iterdir()]
-        
-        st.session_state["sage_config"]['database']['fasta'] = st.selectbox("FASTA Path", options)
-        
-        # Load FASTA
-        if st.session_state["sage_config"]['database']['fasta'] and Path(st.session_state["sage_config"]['database']['fasta']).exists():
-            load_fasta()
-
-        # Quant Configurations
-        st.header("Quant Configuration")
+    
+    def _quant_settings(self):
         cols = st.columns(2)    
         tmt_on = cols[0].checkbox("TMT", key="tmt_on")
         lfq_on = cols[1].checkbox("LFQ", value=True, key="lfq_on")
@@ -167,8 +198,8 @@ class SageConfigUI:
                 )
         else:
             st.session_state["sage_config"]['quant']['lfq'] = None
-
-        # Tolerances
+            
+    def _tolerance_settings(self):
         st.header("Tolerances")
         cols = st.columns(2)
         st.session_state["sage_config"]['precursor_tol']['ppm'] = cols[0].text_input(
@@ -180,8 +211,8 @@ class SageConfigUI:
             "Fragment Tolerance (ppm)", value=", ".join(map(str, st.session_state["sage_config"]['fragment_tol']['ppm']))
         )
         st.session_state["sage_config"]['fragment_tol']['ppm'] = [int(x.strip()) for x in st.session_state["sage_config"]['fragment_tol']['ppm'].split(',')]
-
-        # Other Configurations
+        
+    def _other_settings(self):
         st.header("Other Configurations")
         cols = st.columns(4)
         st.session_state["sage_config"]['precursor_charge'] = cols[0].text_input(
@@ -193,48 +224,90 @@ class SageConfigUI:
             "Isotope Errors", value=", ".join(map(str, st.session_state["sage_config"]['isotope_errors']))
         )
         st.session_state["sage_config"]['isotope_errors'] = [int(x.strip()) for x in st.session_state["sage_config"]['isotope_errors'].split(',')]
-
-        st.session_state["sage_config"]['deisotope'] = cols[2].checkbox(
-            "Deisotope", value=st.session_state["sage_config"]['deisotope']
-        )
-        st.session_state["sage_config"]['chimera'] = cols[3].checkbox(
-            "Chimera", value=st.session_state["sage_config"]['chimera']
-        )
-        cols = st.columns(4)
-        st.session_state["sage_config"]['wide_window'] = cols[0].checkbox(
-            "Wide Window", value=st.session_state["sage_config"]['wide_window']
-        )
-        st.session_state["sage_config"]['predict_rt'] = cols[1].checkbox(
-            "Predict RT", value=st.session_state["sage_config"]['predict_rt']
-        )
-        st.session_state["sage_config"]['min_peaks'] = cols[2].number_input(
-            "Min Peaks", value=st.session_state["sage_config"]['min_peaks'], step=1
-        )
-        st.session_state["sage_config"]['max_peaks'] = cols[3].number_input(
-            "Max Peaks", value=st.session_state["sage_config"]['max_peaks'], step=1
-        )
-        cols = st.columns(4)
-        st.session_state["sage_config"]['min_matched_peaks'] = cols[0].number_input(
-            "Min Matched Peaks", value=st.session_state["sage_config"]['min_matched_peaks'], step=1
-        )
-        st.session_state["sage_config"]['max_fragment_charge'] = cols[1].number_input(
-            "Max Fragment Charge", value=st.session_state["sage_config"]['max_fragment_charge'], step=1
-        )
-        st.session_state["sage_config"]['report_psms'] = cols[2].number_input(
+        
+        if 'override_precursor_charge' in st.session_state["sage_config"]:
+            st.session_state["sage_config"]['override_precursor_charge'] = cols[2].checkbox(
+                "Override Precursor Charge", value=st.session_state["sage_config"]['override_precursor_charge']
+            )
+        st.session_state["sage_config"]['report_psms'] = cols[3].number_input(
             "Report PSMs", value=st.session_state["sage_config"]['report_psms'], step=1
         )
         
+        cols = st.columns(4)
+        st.session_state["sage_config"]['deisotope'] = cols[0].checkbox(
+            "Deisotope", value=st.session_state["sage_config"]['deisotope']
+        )
+        st.session_state["sage_config"]['chimera'] = cols[1].checkbox(
+            "Chimera", value=st.session_state["sage_config"]['chimera']
+        )
+        st.session_state["sage_config"]['wide_window'] = cols[2].checkbox(
+            "Wide Window", value=st.session_state["sage_config"]['wide_window']
+        )
+        st.session_state["sage_config"]['predict_rt'] = cols[3].checkbox(
+            "Predict RT", value=st.session_state["sage_config"]['predict_rt']
+        )
+        
+        cols = st.columns(4)
+        st.session_state["sage_config"]['min_peaks'] = cols[0].number_input(
+            "Min Peaks", value=st.session_state["sage_config"]['min_peaks'], step=1
+        )
+        st.session_state["sage_config"]['max_peaks'] = cols[1].number_input(
+            "Max Peaks", value=st.session_state["sage_config"]['max_peaks'], step=1
+        )
+        st.session_state["sage_config"]['min_matched_peaks'] = cols[2].number_input(
+            "Min Matched Peaks", value=st.session_state["sage_config"]['min_matched_peaks'], step=1
+        )
+        st.session_state["sage_config"]['max_fragment_charge'] = cols[3].number_input(
+            "Max Fragment Charge", value=st.session_state["sage_config"]['max_fragment_charge'], step=1
+        )
+    
+    def _bruker_processor_settings(self):
+        st.header("Bruker Processor Settings")
+
+        # Spectrum Processing Parameters
+        st.subheader("Spectrum Processing Parameters")
+        spectrum_processing_params = st.session_state["sage_config"]["bruker_spectrum_processor"]["spectrum_processing_params"]
+
+        spectrum_processing_params["smoothing_window"] = st.number_input(
+            "Smoothing Window", value=spectrum_processing_params["smoothing_window"], step=1
+        )
+        spectrum_processing_params["centroiding_window"] = st.number_input(
+            "Centroiding Window", value=spectrum_processing_params["centroiding_window"], step=1
+        )
+        spectrum_processing_params["calibration_tolerance"] = st.number_input(
+            "Calibration Tolerance", value=spectrum_processing_params["calibration_tolerance"], step=0.01, format="%.2f"
+        )
+        spectrum_processing_params["calibrate"] = st.checkbox(
+            "Calibrate", value=spectrum_processing_params["calibrate"]
+        )
+
+        st.session_state["sage_config"]["bruker_spectrum_processor"]["spectrum_processing_params"] = spectrum_processing_params
+
+        # Frame Splitting Parameters
+        st.subheader("Frame Splitting Parameters")
+        frame_splitting_params = st.session_state["sage_config"]["bruker_spectrum_processor"]["frame_splitting_params"]
+
+        frame_types = list(frame_splitting_params.keys())
+        for frame_type in frame_types:
+            st.markdown(f"**{frame_type}**")
+            split_params = frame_splitting_params[frame_type]
+
+            updated_params = {}
+            for key, value in split_params.items():
+                updated_params[key] = st.number_input(
+                    f"{frame_type} - {key}", value=value, step=1
+                )
+            frame_splitting_params[frame_type] = updated_params
+
+        st.session_state["sage_config"]["bruker_spectrum_processor"]["frame_splitting_params"] = frame_splitting_params
+        
+    
+    def _input_output_settings(self):
         if "output_directory" in st.session_state["sage_config"]:
-            st.session_state["sage_config"]['output_directory'] = cols[3].text_input(
+            st.session_state["sage_config"]['output_directory'] = st.text_input(
                 "Output Directory", value=st.session_state["sage_config"]['output_directory']
             )
         st.session_state["sage_config"]['mzml_paths'] = st.text_area(
             "mzML Paths", value="\n".join(st.session_state["sage_config"]['mzml_paths'])
         )
         st.session_state["sage_config"]['mzml_paths'] = st.session_state["sage_config"]['mzml_paths'].splitlines()
-
-        # # Save Configuration
-        # if st.button("Save Configuration"):
-        #     with open("updated_config.json", "w") as json_file:
-        #         json.dump(st.session_state["sage_config"], json_file, indent=2)
-        #     st.success("Configuration saved!")
