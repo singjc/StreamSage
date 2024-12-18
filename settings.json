@@ -1,7 +1,8 @@
 {
-    "app-name": "OpenMS WebApp Template",
+    "app-name": "StreamSage",
+    "app-logo": "assets/StreamSage.png",
     "github-user": "OpenMS",
-    "repository-name": "streamlit-template",
+    "repository-name": "stream-sage",
     "analytics": {
         "google-analytics": {
             "enabled": false,

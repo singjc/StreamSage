@@ -2,7 +2,8 @@ import streamlit as st
 from pathlib import Path
 import json
 
-from src.common import TK_AVAILABLE, tk_file_dialog, load_fasta
+from src.common.common import TK_AVAILABLE, tk_file_dialog
+from src.streamsage.common import load_fasta
 
 class SageConfigUI:
     def __init__(self):

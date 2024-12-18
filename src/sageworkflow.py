@@ -8,9 +8,10 @@ from pathlib import Path
 import json
 
 import plotly.express as px
-from .view import load_ms_file, msspectrum_get_df, view_identifications, view_quantification, get_theo_spectrum, SpectrumAlignment, highlight_peptides
-from .common import show_fig
+from .common.common import show_fig
 from .workflow.WorkflowManager import WorkflowManager
+
+from .streamsage.view import load_ms_file, msspectrum_get_df, view_identifications, view_quantification, get_theo_spectrum, SpectrumAlignment, highlight_peptides
 
 
 @st.cache_data
@@ -59,7 +60,7 @@ class SageWorkflow(WorkflowManager):
                 fallback=[str(f) for f in Path("example-data", "sage_config_template.json").glob("*.json")],
             )
 
-    @st.experimental_fragment
+    @st.fragment
     def configure(self) -> None:
         # Allow users to select mzML files for the analysis.
         self.ui.select_input_file("mzML-files", multiple=True)
@@ -81,7 +82,7 @@ class SageWorkflow(WorkflowManager):
         #     except FileNotFoundError as e:
         #         st.error(f"An error occurred while trying to configure SageAdapter: {e}")
 
-    @st.experimental_fragment
+    @st.fragment
     def execution(self) -> None:
         # Any parameter checks, here simply checking if mzML files are selected
         if not self.params["mzML-files"]:
@@ -106,9 +107,8 @@ class SageWorkflow(WorkflowManager):
 
         self.executor.run_exec(st.session_state['sage-exec-path'], str(Path(self.file_manager.workflow_dir, "sage_config.json")), st.session_state['batch-size'])
 
-    # @st.experimental_fragment
     def results(self) -> None:
-        @st.experimental_fragment
+        @st.fragment
         def show_consensus_features():
             df = pd.read_csv(file, sep="\t", index_col=0)
             df['label_mapped'] = np.where(df['label'] == 1, 'Target', 'Decoy')
