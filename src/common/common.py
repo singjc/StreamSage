@@ -127,7 +127,14 @@ def page_setup(page: str = "") -> dict[str, Any]:
         unsafe_allow_html=True,
     )
 
-    st.logo(st.session_state.settings["app-logo"])
+    st.logo(st.session_state.settings["app-logo"], size="large")
+    st.html("""
+    <style>
+        [alt=Logo] {
+        height: 8rem;
+        }
+    </style>
+            """)
 
     # Create google analytics if consent was given
     if (
