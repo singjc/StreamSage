@@ -100,12 +100,14 @@ class SageConfigUI:
         self._enzyme_setting()
 
         cols = st.columns(3)
-        st.session_state["sage_config"]['database']['fragment_min_mz'] = cols[0].number_input(
-            "Fragment Min m/z", value=st.session_state["sage_config"]['database']['fragment_min_mz']
-        )
-        st.session_state["sage_config"]['database']['fragment_max_mz'] = cols[1].number_input(
-            "Fragment Max m/z", value=st.session_state["sage_config"]['database']['fragment_max_mz']
-        )
+        if "fragment_min_mz" in st.session_state["sage_config"]['database']:
+            st.session_state["sage_config"]['database']['fragment_min_mz'] = cols[0].number_input(
+                "Fragment Min m/z", value=st.session_state["sage_config"]['database']['fragment_min_mz']
+            )
+        if "fragment_max_mz" in st.session_state["sage_config"]['database']:
+            st.session_state["sage_config"]['database']['fragment_max_mz'] = cols[1].number_input(
+                "Fragment Max m/z", value=st.session_state["sage_config"]['database']['fragment_max_mz']
+            )
         st.session_state["sage_config"]['database']['peptide_min_mass'] = cols[2].number_input(
             "Peptide Min Mass", value=st.session_state["sage_config"]['database']['peptide_min_mass']
         )
