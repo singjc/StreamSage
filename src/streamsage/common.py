@@ -2,6 +2,7 @@
 import os
 import sys
 import re
+from pathlib import Path
 import requests
 import zipfile
 import tarfile
@@ -17,7 +18,7 @@ def load_fasta():
     
     entries = []
     f = poms.FASTAFile()
-    f.load(st.session_state["sage_config"]['database']['fasta'], entries)
+    f.load(str(st.session_state["sage_config"]['database']['fasta']), entries)
     if "fasta_database" not in st.session_state:
         st.session_state["fasta_database"] = entries
         
