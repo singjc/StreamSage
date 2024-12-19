@@ -177,8 +177,7 @@ class SageWorkflow(WorkflowManager):
                         with open(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", "external_files.txt"), "r") as f:
                             external_files = f.readlines()
                             external_files = [x.strip() for x in external_files]
-                            if selected_row['filename'].values[0] in external_files:
-                                selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
+                        selected_mzml_file = [x for x in external_files if selected_row['filename'].values[0] in os.path.basename(x)][0]
 
                     if not selected_mzml_file.endswith('.mzML'):
                         st.error("Currently only mzML is supported for spectrum viewing. Other formats like Bruker .d will be supported  soon.")
