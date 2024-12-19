@@ -170,9 +170,9 @@ class SageWorkflow(WorkflowManager):
                 if rows:
                     selected_row = single_file_df.iloc[rows, ]
                     
-                    if selected_row['filename'].values[0] in os.listdir(st.session_state.workspace, "sage-workflow/input-files/mzML-files"):
+                    if selected_row['filename'].values[0] in os.listdir(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files").resolve()):
                         selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
-                    elif "external_files.txt" in os.listdir(st.session_state.workspace, "sage-workflow/input-files/mzML-files"):
+                    elif "external_files.txt" in os.listdir(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files").resolve()):
                         # Check the filepath from external_files.txt
                         with open(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", "external_files.txt"), "r") as f:
                             external_files = f.readlines()
