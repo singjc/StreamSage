@@ -1,3 +1,4 @@
+import os
 import time
 
 import numpy as np
@@ -168,7 +169,16 @@ class SageWorkflow(WorkflowManager):
 
                 if rows:
                     selected_row = single_file_df.iloc[rows, ]
-                    selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
+                    
+                    if selected_row['filename'].values[0] in os.listdir(st.session_state.workspace, "sage-workflow/input-files/mzML-files"):
+                        selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
+                    elif "external_files.txt" in os.listdir(st.session_state.workspace, "sage-workflow/input-files/mzML-files"):
+                        # Check the filepath from external_files.txt
+                        with open(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", "external_files.txt"), "r") as f:
+                            external_files = f.readlines()
+                            external_files = [x.strip() for x in external_files]
+                            if selected_row['filename'].values[0] in external_files:
+                                selected_mzml_file = str(Path(st.session_state.workspace, "sage-workflow/input-files/mzML-files", selected_row['filename'].values[0]))
 
                     if not selected_mzml_file.endswith('.mzML'):
                         st.error("Currently only mzML is supported for spectrum viewing. Other formats like Bruker .d will be supported  soon.")
