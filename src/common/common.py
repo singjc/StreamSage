@@ -127,7 +127,7 @@ def page_setup(page: str = "") -> dict[str, Any]:
         unsafe_allow_html=True,
     )
 
-    st.logo(st.session_state.settings["app-logo"], size="large")
+    st.logo(st.session_state.settings["app-logo"])
     st.html("""
     <style>
         [alt=Logo] {
