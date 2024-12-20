@@ -904,17 +904,19 @@ class StreamlitUI:
         """
         # Create two columns
         col1, col2 = st.columns(2)
-
+        if f"{executable_name}-exec-path" not in st.session_state:
+            st.session_state[f"{executable_name}-exec-path"] = ""
+            
         # Place the checkbox in the first column
         with col1:
-            st.checkbox("Auto-Detect Executable", value=True, key=f"{executable_name}-auto-detect")
+            auto_detect_sage = st.button("Auto-Detect Executable", key=f"{executable_name}-auto-detect")
 
         # Place the button in the second column
         with col2:
             if st.button("Download and Install Sage Executable"):
                 st.session_state[f"{executable_name}-exec-path"] = download_and_unpack_sage_exec(target_dir="bin")
         
-        if st.session_state[f"{executable_name}-auto-detect"]:
+        if auto_detect_sage:
             # Check for the Sage executable
             exec_path = shutil.which(executable_name)
 

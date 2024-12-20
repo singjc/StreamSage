@@ -58,7 +58,7 @@ class SageWorkflow(WorkflowManager):
                 key="sage-config",
                 name="Sage Config",
                 file_types=["json"],
-                fallback=[str(f) for f in Path("example-data", "sage_config_template.json").glob("*.json")],
+                fallback=[str(f) for f in Path("example-data", "sage-config").glob("*.json")],
             )
 
     @st.fragment

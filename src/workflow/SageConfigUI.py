@@ -34,7 +34,7 @@ class SageConfigUI:
         options = []
         for file in path.iterdir():
             if file.suffix in [".fasta", ".fas"]:
-                options.append(file)
+                options.append(str(file))
             if file.name == "external_files.txt":
                 with open(file) as f:
                     for line in f:
@@ -62,7 +62,7 @@ class SageConfigUI:
         if "bruker_spectrum_processor" in st.session_state["sage_config"]:
             self._bruker_processor_settings()
         
-        self._input_output_settings()
+        # self._input_output_settings()
 
         # # Save Configuration
         # if st.button("Save Configuration"):
