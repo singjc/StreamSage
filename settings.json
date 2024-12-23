@@ -1,6 +1,8 @@
 {
     "app-name": "StreamSage",
     "app-logo": "assets/StreamSage.png",
+    "app-icon": "assets/SageCrabLogo.png",
+    "app-version": "v0.0.1-alpha",
     "github-user": "OpenMS",
     "repository-name": "stream-sage",
     "analytics": {

@@ -127,15 +127,16 @@ def page_setup(page: str = "") -> dict[str, Any]:
         unsafe_allow_html=True,
     )
 
-    st.logo(st.session_state.settings["app-logo"])
-    st.html("""
-    <style>
-        [alt=Logo] {
-        height: 8rem;
-        }
-    </style>
-            """)
-
+    st.logo(st.session_state.settings["app-logo"], icon_image=st.session_state.settings["app-icon"])
+    st.markdown("""
+                <style>
+                    /* Target the sidebar logo only */
+                    [data-testid="stSidebarHeader"] img[data-testid="stLogo"] {
+                        height: 10rem; /* Example: Adjust the height of the sidebar logo */
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+    
     # Create google analytics if consent was given
     if (
         ("tracking_consent" not in st.session_state) 
