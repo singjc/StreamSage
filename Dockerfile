@@ -15,9 +15,9 @@ ARG PORT=8501
 ARG GITHUB_TOKEN
 ENV GH_TOKEN=${GITHUB_TOKEN}
 # Streamlit app Gihub user name (to download artifact from).
-ARG GITHUB_USER=OpenMS
+ARG GITHUB_USER=singjc
 # Streamlit app Gihub repository name (to download artifact from).
-ARG GITHUB_REPO=streamlit-template
+ARG GITHUB_REPO=StreamSage
 
 USER root
 
@@ -65,13 +65,13 @@ RUN pip install --upgrade pip && python -m pip install -U setuptools nose Cython
 RUN git clone --recursive --depth=1 -b ${OPENMS_BRANCH} --single-branch ${OPENMS_REPO} && cd /OpenMS
 
 # Pull Linux compatible third-party dependencies and store them in directory thirdparty.
-WORKDIR /OpenMS
-RUN mkdir /thirdparty && \
-    git submodule update --init THIRDPARTY && \
-    cp -r THIRDPARTY/All/* /thirdparty && \
-    cp -r THIRDPARTY/Linux/64bit/* /thirdparty && \
-    chmod -R +x /thirdparty
-ENV PATH="/thirdparty/LuciPHOr2:/thirdparty/MSGFPlus:/thirdparty/Sirius:/thirdparty/ThermoRawFileParser:/thirdparty/Comet:/thirdparty/Fido:/thirdparty/MaRaCluster:/thirdparty/MyriMatch:/thirdparty/OMSSA:/thirdparty/Percolator:/thirdparty/SpectraST:/thirdparty/XTandem:/thirdparty/crux:${PATH}"
+# WORKDIR /OpenMS
+# RUN mkdir /thirdparty && \
+#     git submodule update --init THIRDPARTY && \
+#     cp -r THIRDPARTY/All/* /thirdparty && \
+#     cp -r THIRDPARTY/Linux/64bit/* /thirdparty && \
+#     chmod -R +x /thirdparty
+# ENV PATH="/thirdparty/LuciPHOr2:/thirdparty/MSGFPlus:/thirdparty/Sirius:/thirdparty/ThermoRawFileParser:/thirdparty/Comet:/thirdparty/Fido:/thirdparty/MaRaCluster:/thirdparty/MyriMatch:/thirdparty/OMSSA:/thirdparty/Percolator:/thirdparty/SpectraST:/thirdparty/XTandem:/thirdparty/crux:${PATH}"
 
 # Build OpenMS and pyOpenMS.
 FROM setup-build-system AS compile-openms
@@ -85,8 +85,8 @@ WORKDIR /openms-build
 RUN /bin/bash -c "cmake -DCMAKE_BUILD_TYPE='Release' -DCMAKE_PREFIX_PATH='/OpenMS/contrib-build/;/usr/;/usr/local' -DHAS_XSERVER=OFF -DBOOST_USE_STATIC=OFF -DPYOPENMS=ON ../OpenMS -DPY_MEMLEAK_DISABLE=On"
 
 # Build TOPP tools and clean up.
-RUN make -j4 TOPP
-RUN rm -rf src doc CMakeFiles
+# RUN make -j4 TOPP
+# RUN rm -rf src doc CMakeFiles
 
 # Build pyOpenMS wheels and install via pip.
 RUN make -j4 pyopenms
@@ -98,20 +98,33 @@ WORKDIR /
 RUN mkdir openms
 
 # Copy TOPP tools bin directory, add to PATH.
-RUN cp -r openms-build/bin /openms/bin
-ENV PATH="/openms/bin/:${PATH}"
+# RUN cp -r openms-build/bin /openms/bin
+# ENV PATH="/openms/bin/:${PATH}"
 
 # Copy TOPP tools bin directory, add to PATH.
-RUN cp -r openms-build/lib /openms/lib
-ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
+# RUN cp -r openms-build/lib /openms/lib
+# ENV LD_LIBRARY_PATH="/openms/lib/:${LD_LIBRARY_PATH}"
 
 # Copy share folder, add to PATH, remove source directory.
-RUN cp -r OpenMS/share/OpenMS /openms/share
-RUN rm -rf OpenMS
-ENV OPENMS_DATA_PATH="/openms/share/"
+# RUN cp -r OpenMS/share/OpenMS /openms/share
+# RUN rm -rf OpenMS
+# ENV OPENMS_DATA_PATH="/openms/share/"
 
 # Remove build directory.
 RUN rm -rf openms-build
+
+WORKDIR /
+
+# Download rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN export PATH="$HOME/.cargo/bin:$PATH"
+RUN . "$HOME/.cargo/env"
+# Download sage
+RUN git clone https://github.com/lazear/sage.git
+WORKDIR /sage
+RUN $HOME/.cargo/bin/cargo run --release tests/config.json
+ENV PATH="/sage/target/release:${PATH}"
+RUN echo "$PATH"
 
 # Prepare and run streamlit app.
 FROM compile-openms AS run-app
