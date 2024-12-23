@@ -99,6 +99,7 @@ def download_and_unpack_sage_exec(target_dir="./bin/", version="v0.14.7"):
         raise Exception(f"Executable not found in the unpacked directory: {target_dir}")
 
     print(f"Full path to the Sage executable: {exec_path}")
+    st.success(f"Sage executable downloaded to: {exec_path}")
     
     # Return the full executable path
     return exec_path
