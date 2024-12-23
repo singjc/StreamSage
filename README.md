@@ -8,7 +8,7 @@ This app is based on [OpenMS streamlit template project](https://github.com/Open
 Clone the repository and install the dependencies using the following commands:
 
 ```bash
-git clone git@github.com:singjc/StreamSage.git
+git clone https://github.com/singjc/StreamSage.git
 cd StreamSage
 pip install -r requirements.txt
 ```
@@ -23,8 +23,23 @@ streamlit run app.py
 
 To run the app locally, add the local flag to the command:
 
+**Note**: Running the app locally allows direct access to the users file system. This means you directly use files from your local machine. 
+
 ```bash
 streamlit run app.py local
+```
+## Docker
+
+To run the app using Docker, you can pull the available image from Docker Hub:
+
+```bash
+docker pull singjust/streamsage:latest
+```
+
+Then run the image:
+
+```bash
+docker run --rm singjust/streamsage:latest
 ```
 
 ## References
