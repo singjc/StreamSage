@@ -8,7 +8,7 @@
 
 ---
 
-![Website](https://img.shields.io/website?url=https%3A%2F%2Fabi-services.cs.uni-tuebingen.de%2Fstreamsage%2F)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fabi-services.cs.uni-tuebingen.de%2Fstreamsage%2F)](https://abi-services.cs.uni-tuebingen.de/streamsage/)
 
 
 [StreamSage](https://abi-services.cs.uni-tuebingen.de/streamsage/) is a web application for performing proteomics database searching using Sage. For more information about Sage, please refer to the github repository [here](https://github.com/lazear/sage).
